@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-secrets
+  namespace: argocd
+spec:
+  project: default
+  sources:
+  - chart: external-secrets
+    repoURL: https://charts.external-secrets.io
+    targetRevision: 2.6.0
+    helm:
+      releaseName: external-secrets
+  - repoURL: https://github.com/ilyas-bouktrane/xako-cluster.git
+    targetRevision: HEAD
+    path: k8s/apps/external-secrets/manifests
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: external-secrets
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true

@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: omada-controller
+  namespace: argocd
+spec:
+  project: default
+  sources:
+  - repoURL: https://github.com/ilyas-bouktrane/xako-cluster.git
+    targetRevision: HEAD
+    path: k8s/apps/omada/manifests
+  - chart: omada-controller-helm
+    repoURL: registry-1.docker.io/mbentley
+    targetRevision: 1.4.0
+    helm:
+      releaseName: omada-controller
+      values: |
+        config:
+          externalMongoDBUrlSecret:
+            name: omada-secret
+            key: mongodb-url
+          timezone: America/Toronto
+        persistence:
+          data:
+            storageClassName: longhorn
+            size: 10Gi
+          logs:
+            storageClass: longhorn # bug - tmp
+            size: 5Gi
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: omada
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true

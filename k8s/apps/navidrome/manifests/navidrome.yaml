@@ -1,0 +1,144 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: navidrome-app
+  namespace: navidrome
+  labels:
+    app: navidrome-app
+spec:
+  selector:
+    matchLabels:
+      app: navidrome-app
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: navidrome-app
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: navidrome-app
+        image: deluan/navidrome:latest
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ "ALL" ]
+        livenessProbe:
+          tcpSocket:
+            port: 4533
+          initialDelaySeconds: 5
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 4533
+          initialDelaySeconds: 5
+          timeoutSeconds: 2
+          successThreshold: 1
+          failureThreshold: 3
+          periodSeconds: 10
+        ports:
+        - containerPort: 4533
+          name: http
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: music
+          mountPath: /music
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: navidrome-data
+      - name: music
+        persistentVolumeClaim:
+          claimName: navidrome-music
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: navidrome-data
+  namespace: navidrome
+spec:
+  storageClassName: longhorn
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: navidrome-music
+  namespace: navidrome
+spec:
+  storageClassName: longhorn
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: navidrome-app
+  namespace: navidrome
+spec:
+  selector:
+    app: navidrome-app
+  type: ClusterIP
+  ports:
+  - name: navidrome-app
+    protocol: TCP
+    port: 4533
+    targetPort: 4533
+---
+
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: navidrome-app
+  namespace: navidrome
+spec:
+  targetRef:
+    apiVersion: "apps/v1"
+    kind: Deployment
+    name: navidrome-app
+  updatePolicy:
+    updateMode: "Recreate"
+---
+
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: navidrome-app
+  namespace: navidrome
+spec:
+  parentRefs:
+  - name: tls-http
+    namespace: gateway-system
+  hostnames:
+  - "music.xako.net"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: navidrome-app
+      port: 4533

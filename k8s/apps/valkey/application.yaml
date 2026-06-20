@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: valkey
+  namespace: argocd
+spec:
+  project: default
+  sources:
+  - repoURL: https://github.com/ilyas-bouktrane/xako-cluster.git
+    targetRevision: HEAD
+    path: k8s/apps/valkey/manifests
+  - chart: valkey
+    repoURL: https://valkey.io/valkey-helm/
+    targetRevision: 0.9.4
+    helm:
+      releaseName: valkey
+      values: |
+        replica:
+          enabled: true
+          replicas: 2
+          persistence:
+            size: 1Gi
+        podDisruptionBudget:
+          enabled: true
+          minAvailable: 1
+        auth:
+          enabled: true
+          usersExistingSecret: "valkey-secret"
+          aclUsers:
+            default:
+              permissions: "~* &* +@all"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: valkey
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true

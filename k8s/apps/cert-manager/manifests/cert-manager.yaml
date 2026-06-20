@@ -1,0 +1,28 @@
+apiVersion: cert-manager.k8s.cloudflare.com/v1
+kind: ClusterOriginIssuer
+metadata:
+  name: prod-issuer
+  namespace: cert-manager
+spec:
+  requestType: OriginECC
+  auth:
+    tokenRef:
+      name: cloudflare-ca-secret
+      key: cfapi-ca-token
+---
+
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: cloudflare-ca-secret
+  namespace: cert-manager
+spec:
+  refreshInterval: "15s"
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: cloudflare-ca-secret
+  dataFrom:
+  - extract:
+      key: cloudflare

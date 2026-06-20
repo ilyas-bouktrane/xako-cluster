@@ -1,0 +1,3 @@
+controlplane.yaml
+worker.yaml
+talosconfig.yaml

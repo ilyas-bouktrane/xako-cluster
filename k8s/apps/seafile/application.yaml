@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: seafile-app
+  namespace: argocd
+spec:
+  project: default
+  sources:
+  - repoURL: https://github.com/ilyas-bouktrane/xako-cluster.git
+    targetRevision: HEAD
+    path: k8s/apps/seafile/manifests
+  - chart: ce
+    repoURL: https://haiwen.github.io/seafile-helm-chart/repo
+    targetRevision: "13.0"
+    helm:
+      releaseName: seafile-app
+      values: |
+        seafile:
+          configs:
+            seafileDataVolume:
+              storageClassName: longhorn
+              storage: 100Gi
+          env:
+            TIME_ZONE: "America/Toronto"
+            SEAFILE_SERVER_HOSTNAME: "drive.xako.net"
+            SEAFILE_SERVER_PROTOCOL: "https"
+            INIT_SEAFILE_ADMIN_EMAIL: "xakodelako@xako.net"
+            REDIS_HOST: "valkey.valkey.svc.cluster.local"
+            SEAFILE_MYSQL_DB_HOST: "mariadb-cluster-primary.mariadb.svc.cluster.local"
+            SEAFILE_MYSQL_DB_CCNET_DB_NAME: "ccnet-db"
+            SEAFILE_MYSQL_DB_SEAFILE_DB_NAME: "seafile-db"
+            SEAFILE_MYSQL_DB_SEAHUB_DB_NAME: "seahub-db"
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: seafile
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true

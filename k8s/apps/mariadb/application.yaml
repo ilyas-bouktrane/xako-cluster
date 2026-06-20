@@ -1,0 +1,76 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mariadb
+  namespace: argocd
+spec:
+  project: default
+  sources:
+  - repoURL: https://github.com/ilyas-bouktrane/xako-cluster.git
+    targetRevision: HEAD
+    path: k8s/apps/mariadb/manifests
+  - chart: mariadb-operator-crds
+    repoURL: https://helm.mariadb.com/mariadb-operator
+    targetRevision: 26.6.0
+    helm:
+      releaseName: mariadb-operator-crds
+  - chart: mariadb-operator
+    repoURL: https://helm.mariadb.com/mariadb-operator
+    targetRevision: 26.6.0
+    helm:
+      releaseName: mariadb-operator
+      values: |
+        ha:
+          enabled: true
+          replicas: 3
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - mariadb-operator
+                - key: app.kubernetes.io/instance
+                  operator: In
+                  values:
+                  - mariadb-operator
+              topologyKey: kubernetes.io/hostname
+        pdb:
+          enabled: true
+          maxUnavailable: 2
+  - chart: mariadb-cluster
+    repoURL: https://helm.mariadb.com/mariadb-operator
+    targetRevision: 26.6.0
+    helm:
+      releaseName: mariadb-cluster
+      values: |
+        mariadb:
+          rootPasswordSecretKeyRef:
+            name: mariadb-secret
+            key: root-password
+            generate: false
+          storage:
+            size: 10Gi
+        databases:
+        - name: seafile-db
+        - name: seahub-db
+        - name: ccnet-db
+        users:
+        - name: seafile
+          passwordSecretKeyRef:
+            name: mariadb-secret
+            key: seafile-password
+          maxUserConnections: 0
+        grants:
+        - name: seafile
+          privileges:
+          - "ALL PRIVILEGES"
+          username: seafile
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: mariadb
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true

@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hashicorp-vault
+  namespace: argocd
+spec:
+  project: default
+  source:
+    chart: vault
+    repoURL: https://helm.releases.hashicorp.com
+    targetRevision: 1.4.0
+    helm:
+      releaseName: hashicorp-vault
+      values: |
+        server:
+          ha:
+            enabled: true
+            raft:
+              enabled: true
+              setNodeId: true
+        ui:
+          enabled: true
+          activeVaultPodOnly: true
+          serviceType: ClusterIP
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: vault
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true

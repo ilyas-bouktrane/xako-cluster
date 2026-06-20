@@ -1,0 +1,36 @@
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: seafile-secret
+  namespace: seafile
+spec:
+  refreshInterval: "15s"
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: seafile-secret
+  dataFrom:
+  - extract:
+      key: seafile
+---
+
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: seafile-app
+  namespace: seafile
+spec:
+  parentRefs:
+  - name: tls-http
+    namespace: gateway-system
+  hostnames:
+  - "drive.xako.net"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: seafile
+      port: 80

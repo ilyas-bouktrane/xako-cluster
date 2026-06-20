@@ -1,0 +1,41 @@
+apiVersion: mongodbcommunity.mongodb.com/v1
+kind: MongoDBCommunity
+metadata:
+  name: mongodb-cluster
+  namespace: mongodb
+spec:
+  members: 3
+  type: ReplicaSet
+  version: "6.0.5"
+  security:
+    authentication:
+      modes: [ "SCRAM" ]
+  users:
+  - name: omada
+    db: admin
+    passwordSecretRef:
+      name: mongodb-secret
+      key: omada-password
+    roles:
+    - name: root
+      db: admin
+    scramCredentialsSecretName: mongodb-scram
+  additionalMongodConfig:
+    storage.wiredTiger.engineConfig.journalCompressor: zlib
+---
+
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: mongodb-secret
+  namespace: mongodb
+spec:
+  refreshInterval: "15s"
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: mongodb-secret
+  dataFrom:
+  - extract:
+      key: mongodb

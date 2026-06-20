@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vlsm-calculator-app
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/ilyas-bouktrane/xako-cluster.git
+    targetRevision: HEAD
+    path: k8s/apps/vlsm-calculator/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vlsm-calculator
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
