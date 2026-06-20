@@ -1,19 +1,36 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: mariadb
+  name: mariadb-crds
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   project: default
   sources:
-  - repoURL: https://github.com/ilyas-bouktrane/xako-cluster.git
-    targetRevision: HEAD
-    path: k8s/apps/mariadb/manifests
   - chart: mariadb-operator-crds
     repoURL: https://helm.mariadb.com/mariadb-operator
     targetRevision: 26.6.0
     helm:
       releaseName: mariadb-operator-crds
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: mariadb
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+---
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mariadb-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  sources:
   - chart: mariadb-operator
     repoURL: https://helm.mariadb.com/mariadb-operator
     targetRevision: 26.6.0
@@ -40,6 +57,27 @@ spec:
         pdb:
           enabled: true
           maxUnavailable: 2
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: mariadb
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+---
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mariadb-cluster
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  sources:
+  - repoURL: https://github.com/ilyas-bouktrane/xako-cluster.git
+    targetRevision: HEAD
+    path: k8s/apps/mariadb/manifests
   - chart: mariadb-cluster
     repoURL: https://helm.mariadb.com/mariadb-operator
     targetRevision: 26.6.0
