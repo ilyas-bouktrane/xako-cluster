@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: vertical-pod-autoscaler
+  name: vpa-system
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
@@ -15,7 +15,10 @@ spec:
       releaseName: vertical-pod-autoscaler
   destination:
     server: "https://kubernetes.default.svc"
-    namespace: kube-system
+    namespace: vpa-system
   syncPolicy:
     syncOptions:
     - CreateNamespace=true
+    automated:
+      prune: true
+      selfHeal: true

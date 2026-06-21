@@ -40,4 +40,4 @@ spec:
         password: "{{ .password }}"
   dataFrom:
   - extract:
-      key: argocd-repo
+      key: argocd

@@ -1,37 +1,19 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: mongodb-operator
+  name: mongodb
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
   project: default
-  source:
-    chart: community-operator
+  sources:
+  - chart: community-operator
     repoURL: https://mongodb.github.io/helm-charts
     targetRevision: 0.13.0
     helm:
       releaseName: mongodb-operator
-  destination:
-    server: "https://kubernetes.default.svc"
-    namespace: mongodb
-  syncPolicy:
-    syncOptions:
-    - CreateNamespace=true
----
-
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: mongodb-cluster
-  namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/ilyas-bouktrane/xako-cluster.git
+  - repoURL: https://github.com/ilyas-bouktrane/xako-cluster.git
     targetRevision: HEAD
     path: k8s/apps/mongodb/manifests
   destination:
@@ -40,3 +22,6 @@ spec:
   syncPolicy:
     syncOptions:
     - CreateNamespace=true
+    automated:
+      prune: true
+      selfHeal: true

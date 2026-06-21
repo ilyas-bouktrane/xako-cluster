@@ -149,7 +149,7 @@ releases:
 
 - name: vertical-pod-autoscaler
   chart: cowboysysop/vertical-pod-autoscaler
-  namespace: kube-system
+  namespace: vpa-system
   createNamespace: true
   needs:
   - kube-system/cilium

@@ -6,11 +6,17 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "-2"
 spec:
+  ignoreDifferences:
+  - group: admissionregistration.k8s.io
+    kind: MutatingWebhookConfiguration
+    name: hashicorp-vault-agent-injector-cfg
+    jqPathExpressions:
+    - '.webhooks[].clientConfig.caBundle'
   project: default
   source:
     chart: vault
     repoURL: https://helm.releases.hashicorp.com
-    targetRevision: 1.4.0
+    targetRevision: 0.33.0
     helm:
       releaseName: hashicorp-vault
       values: |
@@ -30,3 +36,6 @@ spec:
   syncPolicy:
     syncOptions:
     - CreateNamespace=true
+    automated:
+      prune: true
+      selfHeal: true

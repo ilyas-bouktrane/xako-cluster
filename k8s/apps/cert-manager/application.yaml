@@ -12,7 +12,7 @@ spec:
     targetRevision: HEAD
     path: k8s/apps/cert-manager/manifests
   - chart: cert-manager
-    repoURL: quay.io/jetstack/charts/
+    repoURL: quay.io/jetstack/charts
     targetRevision: v1.20.2
     helm:
       releaseName: cert-manager
@@ -22,7 +22,7 @@ spec:
         config:
           enableGatewayAPI: true
   - chart: origin-ca-issuer
-    repoURL: ghcr.io/cloudflare/origin-ca-issuer-charts/
+    repoURL: ghcr.io/cloudflare/origin-ca-issuer-charts
     targetRevision: 0.6.9
     helm:
       releaseName: origin-ca-issuer
@@ -32,3 +32,6 @@ spec:
   syncPolicy:
     syncOptions:
     - CreateNamespace=true
+    automated:
+      prune: true
+      selfHeal: true
