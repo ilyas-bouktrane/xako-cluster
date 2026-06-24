@@ -13,3 +13,17 @@ spec:
   dataFrom:
   - extract:
       key: omada
+---
+
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: omada-controller
+  namespace: omada
+spec:
+  targetRef:
+    apiVersion: "apps/v1"
+    kind: StatefulSet
+    name: omada-controller
+  updatePolicy:
+    updateMode: "Recreate"

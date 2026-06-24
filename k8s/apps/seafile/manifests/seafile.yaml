@@ -34,3 +34,17 @@ spec:
     backendRefs:
     - name: seafile
       port: 80
+---
+
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: seafile-app
+  namespace: seafile
+spec:
+  targetRef:
+    apiVersion: "apps/v1"
+    kind: Deployment
+    name: seafile
+  updatePolicy:
+    updateMode: "Recreate"
