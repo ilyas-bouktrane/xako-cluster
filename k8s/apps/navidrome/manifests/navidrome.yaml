@@ -17,20 +17,15 @@ spec:
       labels:
         app: navidrome-app
     spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
-        seccompProfile:
-          type: RuntimeDefault
       containers:
       - name: navidrome-app
         image: deluan/navidrome:latest
         securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
           allowPrivilegeEscalation: false
-          capabilities:
-            drop: [ "ALL" ]
+          capabilities: { drop: [ "ALL" ] }
         livenessProbe:
           tcpSocket:
             port: 4533
@@ -58,10 +53,6 @@ spec:
           mountPath: /music
       - name: seafile-client
         image: flrnnc/seafile-client:latest
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: [ "ALL" ]
         envFrom:
         - secretRef:
             name: seafile-client
@@ -102,6 +93,8 @@ spec:
         SEAF_SERVER_URL: http://seafile.seafile.svc.cluster.local:80
         SEAF_SKIP_SSL_CERT: "true"
         SEAF_LIBRARY: 4cdbaf12-c7d0-47ee-b913-56c68a6ccac0
+        UID: "1000"
+        GID: "1000"
         SEAF_USERNAME: "{{ .SEAF_USERNAME }}"
         SEAF_PASSWORD: "{{ .SEAF_PASSWORD }}"
   dataFrom:
