@@ -99,7 +99,7 @@ spec:
     name: seafile-client
     template:
       data:
-        SEAF_SERVER_URL: https://drive.xako.net/
+        SEAF_SERVER_URL: http://seafile.seafile.svc.cluster.local:80
         SEAF_LIBRARY: 4cdbaf12-c7d0-47ee-b913-56c68a6ccac0
         SEAF_USERNAME: "{{ .SEAF_USERNAME }}"
         SEAF_PASSWORD: "{{ .SEAF_PASSWORD }}"
