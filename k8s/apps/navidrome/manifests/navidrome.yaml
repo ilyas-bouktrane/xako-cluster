@@ -24,10 +24,6 @@ spec:
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
-      hostAliases:
-      - ip: "192.168.20.20"
-        hostnames:
-        - "drive.xako.net"
       containers:
       - name: navidrome-app
         image: deluan/navidrome:latest
@@ -103,7 +99,7 @@ spec:
     name: seafile-client
     template:
       data:
-        SEAF_SERVER_URL: https://drive.xako.net
+        SEAF_SERVER_URL: http://seafile.seafile.svc.cluster.local:80
         SEAF_SKIP_SSL_CERT: "true"
         SEAF_LIBRARY: 4cdbaf12-c7d0-47ee-b913-56c68a6ccac0
         SEAF_USERNAME: "{{ .SEAF_USERNAME }}"
@@ -118,8 +114,6 @@ kind: PersistentVolumeClaim
 metadata:
   name: seafile-client
   namespace: navidrome
-  labels:
-    app: seafile-client
 spec:
   storageClassName: longhorn
   accessModes:
