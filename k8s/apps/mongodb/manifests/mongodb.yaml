@@ -22,6 +22,28 @@ spec:
     scramCredentialsSecretName: mongodb-scram
   additionalMongodConfig:
     storage.wiredTiger.engineConfig.journalCompressor: zlib
+    storage.wiredTiger.engineConfig.cacheSizeGB: 1
+  statefulSet:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: mongod
+            resources:
+              requests:
+                cpu: "250m"
+                memory: 1536Mi
+              limits:
+                cpu: "2"
+                memory: 2Gi
+          - name: mongodb-agent
+            resources:
+              requests:
+                cpu: "100m"
+                memory: 200Mi
+              limits:
+                cpu: "500m"
+                memory: 500Mi
 ---
 
 apiVersion: external-secrets.io/v1
