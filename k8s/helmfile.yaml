@@ -52,6 +52,8 @@ releases:
       enableAppProtocol: true
   - l2announcements:
       enabled: true
+  - bgpControlPlane:
+      enabled: true
 
 - name: argocd
   namespace: argocd

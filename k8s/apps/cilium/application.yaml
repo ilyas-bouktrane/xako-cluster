@@ -50,6 +50,8 @@ spec:
           enableAppProtocol: true
         l2announcements:
           enabled: true
+        bgpControlPlane
+          enabled: true
   destination:
     server: "https://kubernetes.default.svc"
     namespace: kube-system
