@@ -35,3 +35,81 @@ spec:
       "io.kubernetes.service.namespace": "gateway-system"
 ---
 
+apiVersion: cilium.io/v2
+kind: CiliumBGPClusterConfig
+metadata:
+  name: cilium-bgp
+spec:
+  nodeSelector:
+    matchExpressions:
+    - key: node-role.kubernetes.io/control-plane
+      operator: DoesNotExist
+  bgpInstances:
+  - name: "instance-65000"
+    localASN: 65001
+    peers:
+    - name: "unifi-router"
+      peerASN: 65000
+      autoDiscovery:
+        mode: "DefaultGateway"
+        defaultGateway:
+          addressFamily: ipv4
+      peerConfigRef:
+        name: "cilium-peer"
+---
+
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: bgp-auth-secret
+  namespace: kube-system
+spec:
+  refreshInterval: "15s"
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: bgp-auth-secret
+  dataFrom:
+  - extract:
+      key: cilium-bgp
+---
+
+apiVersion: cilium.io/v2
+kind: CiliumBGPPeerConfig
+metadata:
+  name: cilium-peer
+spec:
+  timers:
+    holdTimeSeconds: 9
+    keepAliveTimeSeconds: 3
+  authSecretRef: bgp-auth-secret
+  gracefulRestart:
+    enabled: true
+    restartTimeSeconds: 15
+  families:
+  - afi: ipv4
+    safi: unicast
+    advertisements:
+      matchLabels:
+        advertise: "bgp"
+---
+
+apiVersion: cilium.io/v2
+kind: CiliumBGPAdvertisement
+metadata:
+  name: bgp-advertisements
+  labels:
+    advertise: bgp
+spec:
+  advertisements:
+  - advertisementType: "Service"
+    service:
+      addresses:
+      - LoadBalancerIP
+    selector:
+      matchLabels:
+        io.kubernetes.service.namespace: gateway-system
+---
+
+
