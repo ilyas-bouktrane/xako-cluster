@@ -49,6 +49,11 @@ spec:
       releaseName: mariadb-cluster
       values: |
         mariadb:
+          replicas: 1
+          galera:
+            enabled: false
+          storage:
+            storageClassName: longhorn
           rootPasswordSecretKeyRef:
             name: mariadb-secret
             key: root-password
