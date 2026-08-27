@@ -41,7 +41,7 @@ spec:
               topologyKey: kubernetes.io/hostname
         pdb:
           enabled: true
-          maxUnavailable: 2
+          maxUnavailable: 1
   - chart: mariadb-cluster
     repoURL: https://helm.mariadb.com/mariadb-operator
     targetRevision: 26.6.0
@@ -53,13 +53,12 @@ spec:
           galera:
             enabled: false
           storage:
+            size: 10Gi
             storageClassName: longhorn
           rootPasswordSecretKeyRef:
             name: mariadb-secret
             key: root-password
             generate: false
-          storage:
-            size: 10Gi
         databases:
         - name: seafile-db
         - name: seahub-db
@@ -69,12 +68,17 @@ spec:
           passwordSecretKeyRef:
             name: mariadb-secret
             key: seafile-password
+          host: "%"
           maxUserConnections: 0
         grants:
         - name: seafile
           privileges:
           - "ALL PRIVILEGES"
+          database: "*"
+          table: "*"
           username: seafile
+          host: "%"
+          grantOption: true
   destination:
     server: "https://kubernetes.default.svc"
     namespace: mariadb
