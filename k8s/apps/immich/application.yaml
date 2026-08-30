@@ -1,0 +1,52 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: immich-app
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  sources:
+  - repoURL: https://github.com/ilyas-bouktrane/xako-cluster.git
+    targetRevision: HEAD
+    path: k8s/apps/immich/manifests
+  - chart: immich
+    repoURL: ghcr.io/immich-app/immich-charts/
+    targetRevision: 0.13.1
+    helm:
+      releaseName: immich-app
+      values: |
+        immich:
+          persistence:
+            library:
+              existingClaim: immich-library-data
+        controllers:
+          main:
+            containers:
+              main:
+                env:
+                  REDIS_HOSTNAME: valkey.valkey.svc.cluster.local
+                  REDIS_DBINDEX: "1"
+                  REDIS_PASSWORD:
+                    valueFrom:
+                      secretKeyRef:
+                        name: immich-secret
+                        key: REDIS_PASSWORD
+                  DB_HOSTNAME: immich-database-rw
+                  DB_DATABASE_NAME: immich-db
+                  DB_USERNAME: immich-user
+                  DB_PASSWORD:
+                    valueFrom:
+                      secretKeyRef:
+                        name: immich-db-user-secret
+                        key: password
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: immich
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+    automated:
+      prune: true
+      selfHeal: true

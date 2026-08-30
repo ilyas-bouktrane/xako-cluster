@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: immich
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-library-data
+  namespace: immich
+spec:
+  storageClassName: longhorn
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 200Gi
+---
+
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: immich-app
+  namespace: immich
+spec:
+  targetRef:
+    apiVersion: "apps/v1"
+    kind: Deployment
+    name: immich-app
+  updatePolicy:
+    updateMode: "Recreate"
+---
+
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: immich-secret
+  namespace: immich
+spec:
+  refreshInterval: "15s"
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: immich-secret
+  dataFrom:
+  - extract:
+      key: immich

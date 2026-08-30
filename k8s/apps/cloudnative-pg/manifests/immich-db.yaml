@@ -1,0 +1,74 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: immich-database
+  namespace: immich
+spec:
+  instances: 3
+  storage:
+    size: 10Gi
+  imageName: ghcr.io/cloudnative-pg/postgresql:18-standard-trixie
+  bootstrap:
+    initdb:
+      database: postgres
+      owner: postgres
+  postgresql:
+    shared_preload_libraries:
+    - "vchord.so"
+    extensions:
+    - name: vchord
+      image:
+        reference: ghcr.io/tensorchord/vchord-scratch:pg18-v1.1.1
+      dynamic_library_path:
+      - /usr/lib/postgresql/18/lib
+      extension_control_path:
+      - /usr/share/postgresql/18/
+  managed:
+    roles:
+    - name: immich-user
+      ensure: present
+      login: true
+      createdb: false
+      superuser: false
+      passwordSecret:
+        name: immich-db-user-secret
+---
+
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: immich-database
+  namespace: immich
+spec:
+  name: immich-db
+  owner: immich-user
+  cluster:
+    name: immich-database
+  extensions:
+  - name: vector
+    ensure: present
+  - name: vchord
+    ensure: present
+  - name: cube
+    ensure: present
+  - name: earthdistance
+    ensure: present
+---
+
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: immich-db-user-secret
+  namespace: immich
+spec:
+  refreshInterval: "15s"
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+  target:
+    name: immich-db-user-secret
+    template:
+      type: kubernetes.io/basic-auth
+  dataFrom:
+  - extract:
+      key: cloudnative-pg/immich-user
