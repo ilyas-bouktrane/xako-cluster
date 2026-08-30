@@ -12,7 +12,7 @@ spec:
     targetRevision: HEAD
     path: k8s/apps/immich/manifests
   - chart: immich
-    repoURL: ghcr.io/immich-app/immich-charts/
+    repoURL: ghcr.io/immich-app/immich-charts
     targetRevision: 0.13.1
     helm:
       releaseName: immich-app

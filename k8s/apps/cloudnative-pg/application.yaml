@@ -16,8 +16,6 @@ spec:
       values: |
         crds:
           create: true
-        monitoring:
-          podMonitorEnabled: true
   - repoURL: https://github.com/ilyas-bouktrane/xako-cluster.git
     targetRevision: HEAD
     path: k8s/apps/cloudnative-pg/manifests
