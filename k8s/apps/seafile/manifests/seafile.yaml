@@ -24,6 +24,8 @@ spec:
   parentRefs:
   - name: external-gateway
     namespace: gateway-system
+  - name: internal-gateway
+    namespace: gateway-system
   hostnames:
   - "drive.xako.net"
   rules:
