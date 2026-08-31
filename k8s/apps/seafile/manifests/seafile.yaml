@@ -22,7 +22,7 @@ metadata:
   namespace: seafile
 spec:
   parentRefs:
-  - name: tls-http
+  - name: external-gateway
     namespace: gateway-system
   hostnames:
   - "drive.xako.net"

@@ -70,10 +70,13 @@ metadata:
   namespace: immich
 spec:
   parentRefs:
-  - name: tls-http
+  - name: external-gateway
+    namespace: gateway-system
+  - name: internal-gateway
     namespace: gateway-system
   hostnames:
   - "gallery.xako.net"
+  - "gallery.lan.xako.net"
   rules:
   - matches:
     - path:

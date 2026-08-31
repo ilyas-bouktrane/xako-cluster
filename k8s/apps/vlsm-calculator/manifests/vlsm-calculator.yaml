@@ -112,7 +112,7 @@ metadata:
   namespace: vlsm-calculator
 spec:
   parentRefs:
-  - name: tls-http
+  - name: external-gateway
     namespace: gateway-system
   hostnames:
   - vlsm.xako.net

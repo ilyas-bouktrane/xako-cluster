@@ -1,10 +1,10 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: tls-http
+  name: external-gateway
   namespace: gateway-system
   annotations:
-    cert-manager.io/issuer: prod-issuer
+    cert-manager.io/issuer: cloudflare-origin-issuer
     cert-manager.io/issuer-kind: ClusterOriginIssuer
     cert-manager.io/issuer-group: cert-manager.k8s.cloudflare.com
 spec:
@@ -23,16 +23,55 @@ spec:
         from: All
 ---
 
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: internal-gateway
+  namespace: gateway-system
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-issuer
+    cert-manager.io/issuer-kind: ClusterIssuer
+    cert-manager.io/issuer-group: cert-manager.io
+spec:
+  gatewayClassName: cilium
+  listeners:
+  - name: https
+    protocol: HTTPS
+    port: 443
+    hostname: "*.lan.xako.net"
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: xako-lan-tls
+    allowedRoutes:
+      namespaces:
+        from: All
+---
+
 apiVersion: "cilium.io/v2"
 kind: CiliumLoadBalancerIPPool
 metadata:
-  name: gateway-ip
+  name: external-gateway-ip
 spec:
   blocks:
   - cidr: "192.168.20.20/32"
   serviceSelector:
     matchLabels:
-      "io.kubernetes.service.namespace": "gateway-system"
+      io.kubernetes.service.namespace: "gateway-system"
+      io.kubernetes.service.name: "cilium-gateway-external-gateway"
+---
+
+apiVersion: "cilium.io/v2"
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: internal-gateway-ip
+spec:
+  blocks:
+  - cidr: "192.168.20.99/32"
+  serviceSelector:
+    matchLabels:
+      io.kubernetes.service.namespace: "gateway-system"
+      io.kubernetes.service.name: "cilium-gateway-internal-gateway"
 ---
 
 apiVersion: cilium.io/v2

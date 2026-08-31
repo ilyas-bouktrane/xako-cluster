@@ -1,14 +1,34 @@
 apiVersion: cert-manager.k8s.cloudflare.com/v1
 kind: ClusterOriginIssuer
 metadata:
-  name: prod-issuer
-  namespace: cert-manager
+  name: cloudflare-origin-issuer
 spec:
   requestType: OriginECC
   auth:
     tokenRef:
       name: cloudflare-ca-secret
       key: cfapi-ca-token
+---
+
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-issuer
+spec:
+  acme:
+    email: xakodelako@xako.net
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-dns01-account-key
+    solvers:
+    - dns01:
+        cloudflare:
+          apiTokenSecretRef:
+            name: cloudflare-ca-secret
+            key: cfapi-dns-zone-token
+      selector:
+        dnsZones:
+        - "xako.net"
 ---
 
 apiVersion: external-secrets.io/v1
@@ -26,3 +46,6 @@ spec:
   dataFrom:
   - extract:
       key: cloudflare
+---
+
+
