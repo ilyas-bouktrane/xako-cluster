@@ -76,7 +76,6 @@ spec:
     namespace: gateway-system
   hostnames:
   - "gallery.xako.net"
-  - "gallery.lan.xako.net"
   rules:
   - matches:
     - path:
