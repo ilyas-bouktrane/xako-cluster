@@ -30,8 +30,6 @@ metadata:
   namespace: gateway-system
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-issuer
-    cert-manager.io/issuer-kind: ClusterIssuer
-    cert-manager.io/issuer-group: cert-manager.io
 spec:
   gatewayClassName: cilium
   listeners:
