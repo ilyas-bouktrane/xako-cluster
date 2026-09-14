@@ -92,7 +92,7 @@ spec:
       data:
         SEAF_SERVER_URL: http://seafile.seafile.svc.cluster.local:80
         SEAF_SKIP_SSL_CERT: "true"
-        SEAF_LIBRARY: 4cdbaf12-c7d0-47ee-b913-56c68a6ccac0
+        SEAF_LIBRARY: d76ea90d-4e30-40c9-87ef-41d8ada056f6
         UID: "1000"
         GID: "1000"
         SEAF_USERNAME: "{{ .SEAF_USERNAME }}"
