@@ -11,13 +11,6 @@ releases:
   chart: cilium/cilium
   wait: true
   waitForJobs: true
-  hooks:
-  - events: [ "postsync" ]
-    command: kubectl
-    args: [ "apply", "-f", "cilium.yaml" ]
-  - events: [ "postuninstall" ]
-    command: kubectl
-    args: [ "delete", "-f", "cilium.yaml" ]
   values:
   - ipam:
       mode: kubernetes
@@ -50,8 +43,6 @@ releases:
       enabled: true
       enableAlpn: true
       enableAppProtocol: true
-  - l2announcements:
-      enabled: true
   - bgpControlPlane:
       enabled: true
 

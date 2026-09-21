@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
       - name: navidrome-app
-        image: deluan/navidrome:latest
+        image: deluan/navidrome:0.64.0
         securityContext:
           runAsNonRoot: true
           runAsUser: 1000
@@ -52,7 +52,7 @@ spec:
         - name: music
           mountPath: /music
       - name: seafile-client
-        image: flrnnc/seafile-client:latest
+        image: flrnnc/seafile-client:9
         envFrom:
         - secretRef:
             name: seafile-client

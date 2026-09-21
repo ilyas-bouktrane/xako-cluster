@@ -114,6 +114,8 @@ spec:
   parentRefs:
   - name: external-gateway
     namespace: gateway-system
+  - name: internal-gateway
+    namespace: gateway-system
   hostnames:
   - vlsm.xako.net
   rules:

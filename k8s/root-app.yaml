@@ -19,29 +19,3 @@ spec:
     automated:
       prune: true
       selfHeal: true
----
-
-apiVersion: external-secrets.io/v1
-kind: ExternalSecret
-metadata:
-  name: xako-cluster-repo
-  namespace: argocd
-spec:
-  refreshInterval: "15s"
-  secretStoreRef:
-    name: vault-backend
-    kind: ClusterSecretStore
-  target:
-    name: xako-cluster-repo
-    template:
-      metadata:
-        labels:
-          argocd.argoproj.io/secret-type: repository
-      data:
-        type: git
-        url: https://github.com/ilyas-bouktrane/xako-cluster.git
-        username: "{{ .username }}"
-        password: "{{ .password }}"
-  dataFrom:
-  - extract:
-      key: argocd
