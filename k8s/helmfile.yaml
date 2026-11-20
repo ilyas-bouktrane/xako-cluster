@@ -50,6 +50,7 @@ releases:
   namespace: argocd
   createNamespace: true
   chart: argo/argo-cd
+  version: 10.18.2
   values:
   - redis-ha:
       enabled: true
@@ -61,3 +62,6 @@ releases:
       replicas: 2
   - applicationSet:
       replicas: 2
+  - global:
+      networkPolicy:
+        create: false

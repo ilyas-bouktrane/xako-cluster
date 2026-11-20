@@ -1,0 +1,72 @@
+# Control plane patch (Talos v1.14 multi-document format).
+# Every customization applied on top of `talosctl gen config` defaults.
+# Self-contained on purpose: settings shared with workers are duplicated in wk-patch.yaml.
+
+# Image Factory schematic: nocloud platform, SecureBoot, extensions iscsi-tools, qemu-guest-agent, util-linux-tools
+apiVersion: v1alpha1
+kind: UnattendedInstallConfig
+installer:
+  image: factory.talos.dev/nocloud-installer-secureboot/861a91152157e97c900df9ca48fe4a26f19f19795e081386751bb7994c16800f:v1.14.6
+---
+# Kubelet requests serving certificates, approved by kubelet-serving-cert-approver (see manifests below)
+apiVersion: v1alpha1
+kind: KubeletConfig
+config:
+  serverTLSBootstrap: true
+---
+# Keep the pre-1.14 behavior: Longhorn drives the host iscsid (iscsi-tools extension), which the
+# workload isolation sandbox may break. Enable only after validating Longhorn with it.
+apiVersion: v1alpha1
+kind: SecurityProfileConfig
+workloadIsolation: false
+---
+apiVersion: v1alpha1
+kind: EthernetConfig
+name: eth0
+features:
+  tx-checksum-ip-generic: false
+---
+apiVersion: v1alpha1
+kind: DHCPv4Config
+name: eth0
+---
+# Kubernetes API endpoint, floating between the three control planes
+apiVersion: v1alpha1
+kind: Layer2VIPConfig
+name: 192.168.20.10
+link: eth0
+---
+# No Flannel: Cilium is the CNI (installed by helmfile, then managed by ArgoCD)
+apiVersion: v1alpha1
+kind: KubeFlannelCNIConfig
+$patch: delete
+---
+# No kube-proxy: Cilium runs with kubeProxyReplacement
+apiVersion: v1alpha1
+kind: KubeProxyConfig
+enabled: false
+---
+apiVersion: v1alpha1
+kind: KubeExternalManifestConfig
+name: kubelet-serving-cert-approver
+url: https://raw.githubusercontent.com/alex1989hu/kubelet-serving-cert-approver/main/deploy/standalone-install.yaml
+---
+apiVersion: v1alpha1
+kind: KubeExternalManifestConfig
+name: metrics-server
+url: https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+---
+apiVersion: v1alpha1
+kind: KubeExternalManifestConfig
+name: gateway-api-crds
+url: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.7.0/experimental-install.yaml
+---
+apiVersion: v1alpha1
+kind: KubeExternalManifestConfig
+name: origin-ca-issuer-clusteroriginissuers-crd
+url: https://raw.githubusercontent.com/cloudflare/origin-ca-issuer/v0.14.4/deploy/crds/cert-manager.k8s.cloudflare.com_clusteroriginissuers.yaml
+---
+apiVersion: v1alpha1
+kind: KubeExternalManifestConfig
+name: origin-ca-issuer-originissuers-crd
+url: https://raw.githubusercontent.com/cloudflare/origin-ca-issuer/v0.14.4/deploy/crds/cert-manager.k8s.cloudflare.com_originissuers.yaml

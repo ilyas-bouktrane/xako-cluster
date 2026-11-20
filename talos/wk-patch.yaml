@@ -1,0 +1,27 @@
+# Worker patch (Talos v1.14 multi-document format).
+# Every customization applied on top of `talosctl gen config` defaults.
+# Self-contained on purpose: settings shared with control planes are duplicated in cp-patch.yaml.
+
+# Image Factory schematic: nocloud platform, SecureBoot, extensions iscsi-tools, qemu-guest-agent, util-linux-tools
+apiVersion: v1alpha1
+kind: UnattendedInstallConfig
+installer:
+  image: factory.talos.dev/nocloud-installer-secureboot/861a91152157e97c900df9ca48fe4a26f19f19795e081386751bb7994c16800f:v1.14.6
+---
+# Kubelet requests serving certificates, approved by kubelet-serving-cert-approver (deployed from the control plane)
+apiVersion: v1alpha1
+kind: KubeletConfig
+config:
+  serverTLSBootstrap: true
+---
+# Keep the pre-1.14 behavior: Longhorn drives the host iscsid (iscsi-tools extension), which the
+# workload isolation sandbox may break. Enable only after validating Longhorn with it.
+apiVersion: v1alpha1
+kind: SecurityProfileConfig
+workloadIsolation: false
+---
+apiVersion: v1alpha1
+kind: EthernetConfig
+name: eth0
+features:
+  tx-checksum-ip-generic: false
