@@ -16,6 +16,9 @@ spec:
     targetRevision: "13.0.4"
     helm:
       releaseName: seafile-app
+      # The chart exposes no deployment strategy, but seafile-data is ReadWriteOnce: the Deployment was
+      # patched once to `strategy.type: Recreate` (kubectl patch). The chart never sets the field, so
+      # ArgoCD keeps the patch.
       values: |
         seafile:
           configs:

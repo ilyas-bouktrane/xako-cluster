@@ -23,6 +23,9 @@ spec:
               existingClaim: immich-library-data
         controllers:
           main:
+            # The library PVC is ReadWriteOnce: a rolling update would start the new pod
+            # before releasing the volume and stay stuck on attach
+            strategy: Recreate
             containers:
               main:
                 image:

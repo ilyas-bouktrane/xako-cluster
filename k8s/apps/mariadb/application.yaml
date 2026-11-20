@@ -25,6 +25,13 @@ spec:
         ha:
           enabled: true
           replicas: 3
+        # 3 replicas with required anti-affinity on 3 workers: a surge pod can never be scheduled,
+        # so replace pods one at a time instead
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxSurge: 0
+            maxUnavailable: 1
         affinity:
           podAntiAffinity:
             requiredDuringSchedulingIgnoredDuringExecution:
