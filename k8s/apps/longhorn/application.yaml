@@ -10,7 +10,7 @@ spec:
   sources:
   - chart: longhorn
     repoURL: https://charts.longhorn.io/
-    targetRevision: v1.12.0
+    targetRevision: 1.13.0
     helm:
       releaseName: longhorn
       values: |
@@ -18,6 +18,8 @@ spec:
           defaultClass: false
         preUpgradeChecker:
           jobEnabled: false
+        networkPolicies:
+          restrictInternalTraffic: false
   - repoURL: https://github.com/ilyas-bouktrane/xako-cluster.git
     targetRevision: HEAD
     path: k8s/apps/longhorn/manifests
