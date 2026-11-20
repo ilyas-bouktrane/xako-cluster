@@ -5,10 +5,13 @@ repositories:
   url: https://helm.cilium.io/
 
 releases:
+# Bootstrap only: once running, ArgoCD manages Cilium through k8s/apps/cilium/application.yaml.
+# Keep the version in sync with that Application.
 - name: cilium
   namespace: kube-system
   createNamespace: true
   chart: cilium/cilium
+  version: 1.20.5
   wait: true
   waitForJobs: true
   values:

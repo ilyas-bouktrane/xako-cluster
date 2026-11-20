@@ -1,5 +1,5 @@
 controlplane.yaml
 worker.yaml
-talosconfig.yaml
+talosconfig*
 secrets.yaml
 *.zip

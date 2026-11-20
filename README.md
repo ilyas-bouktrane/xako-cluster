@@ -236,6 +236,7 @@ Install order is enforced with **sync waves**, because the dependencies are real
 
 | Wave | Components                                                          | Why here                                            |
 | :--: | ------------------------------------------------------------------- | --------------------------------------------------- |
+| `-5` | **ArgoCD** (itself)                                                 | The controller reconciling everything else          |
 | `-4` | **Cilium**                                                          | Without a CNI, no pod schedules                     |
 | `-3` | **Longhorn**                                                        | Vault's raft storage needs persistent volumes       |
 | `-2` | **HashiCorp Vault** (HA, raft)                                      | Source of every secret downstream                   |
@@ -245,7 +246,7 @@ Install order is enforced with **sync waves**, because the dependencies are real
 | `3`  | **Seafile**                                                         | Depends on both MariaDB and Valkey                  |
 | `4`  | **Navidrome**                                                       | Its sidecar syncs the music library from Seafile    |
 
-The bootstrap itself — Cilium and ArgoCD, the only two components that cannot deploy themselves — lives in `k8s/helmfile.yaml`. From there, ArgoCD takes over Cilium as well, including its BGP and Gateway manifests.
+The bootstrap itself — Cilium and ArgoCD, the only two components that cannot deploy themselves on an empty cluster — lives in `k8s/helmfile.yaml`, pinned to the same chart versions as their `Application`. From there, ArgoCD takes over both: Cilium (including its BGP and Gateway manifests) through `k8s/apps/cilium/`, and **ArgoCD manages its own upgrades** through `k8s/apps/argocd/`. After the first install, `helmfile` is never run again.
 
 ![ArgoCD applications — every workload Healthy and Synced, each sourced from a path in this repository](screenshots/argocd-app-of-apps.png)
 
@@ -253,7 +254,7 @@ The bootstrap itself — Cilium and ArgoCD, the only two components that cannot 
 
 ## 🔐 Secrets Management
 
-**There are no secrets in this repository, and there never have been.** `.gitignore` has covered `talosconfig.yaml`, `controlplane.yaml`, and `worker.yaml` since the initial commit, and no `kind: Secret` or `stringData` block appears anywhere in the history.
+**There are no secrets in this repository, and there never have been.** `.gitignore` has covered the generated Talos configs (`controlplane.yaml`, `worker.yaml`, `talosconfig`) since the initial commit — joined later by `secrets.yaml`, the cluster PKI — and no `kind: Secret` or `stringData` block appears anywhere in the history.
 
 ```mermaid
 flowchart LR
@@ -298,17 +299,20 @@ The BGP session's MD5 key follows the same path on the cluster side. On the rout
 
 ```text
 /
-├── 📁 talos/                    # Per-node Talos machine config patches
+├── 📁 talos/
+│   ├── 📄 cp-patch.yaml         # Every control-plane customization on top of Talos defaults
+│   ├── 📄 wk-patch.yaml         # Every worker customization on top of Talos defaults
+│   └── 🔒 secrets.yaml, controlplane.yaml, worker.yaml, talosconfig   # gitignored, generated
 │
 ├── 📄 frr.conf                  # BGP configuration applied on the UniFi UDM Pro
 │
 ├── 📁 screenshots/              # Images used in this README
 │
 └── 📁 k8s/
-    ├── 📄 helmfile.yaml         # Bootstrap only: Cilium + ArgoCD
+    ├── 📄 helmfile.yaml         # Bootstrap only: Cilium + ArgoCD, pinned to their Application versions
     ├── 📄 root-app.yaml         # ArgoCD app-of-apps
     └── 📁 apps/<service>/
-        ├── 📄 application.yaml  # ArgoCD Application — Helm sources + sync wave
+        ├── 📄 application.yaml  # ArgoCD Application — Helm sources + sync wave (ArgoCD included)
         └── 📁 manifests/        # Cluster-specific resources (routes, PVCs, ExternalSecrets)
 ```
 
@@ -317,6 +321,8 @@ The BGP session's MD5 key follows the same path on the cluster side. On the rout
 ## 🧭 Architecture Decisions
 
 **Talos over a general-purpose distro.** No SSH, no shell, no package manager. Debugging has to go through `talosctl`, which forces the discipline of rebuilding a node rather than patching it by hand — the same discipline that makes the cluster reproducible.
+
+**Talos configuration as patches, not files.** Only `talos/cp-patch.yaml` and `talos/wk-patch.yaml` are versioned: each one lists, in the Talos 1.14 multi-document format, every setting that differs from `talosctl gen config` defaults for its role. The full machine configs are build artifacts generated from those patches and `secrets.yaml`, so they can be thrown away and regenerated identically — and new Talos defaults are picked up on regeneration instead of being frozen in an old file. Nothing is node-specific: hostnames come from Proxmox cloud-init (the VM name), IPs from UniFi DHCP reservations, so one command configures every node of a role. The two patches are deliberately self-contained rather than sharing a common file, because control planes and workers are expected to diverge.
 
 **Control planes don't speak BGP.** Excluding them from peering keeps data-plane traffic off the nodes carrying etcd.
 
@@ -330,7 +336,8 @@ The BGP session's MD5 key follows the same path on the cluster side. On the rout
 
 Honest infrastructure has a debt list. This one is mine:
 
-- [x] **Pin image versions** — every third-party image now runs an explicit version instead of `:latest`
+- [x] **Pin image versions** — every Helm chart and third-party workload image now runs an explicit version instead of `:latest`
+- [ ] **Pin the Talos bootstrap manifests** — `kubelet-serving-cert-approver` (`main`) and `metrics-server` (`latest`) are still fetched from floating URLs in the Talos patches
 - [ ] **Version the VLSM Calculator image** — tag each build with its commit SHA so updates ship through Git like everything else
 - [ ] **MariaDB Galera** — the operator runs HA, the database instance does not yet
 - [ ] **Tighten Seafile grants** — currently broader than the three databases it actually needs
@@ -342,28 +349,202 @@ Honest infrastructure has a debt list. This one is mine:
 
 ## 🔁 Reproducing the Cluster
 
-```bash
-# 1. Generate the base Talos configs (gitignored — they hold the cluster PKI)
-talosctl gen config xako-cluster https://192.168.20.10:6443 --output-dir talos/
+This section rebuilds the cluster from bare hypervisors. Every step is either a command or a setting to enter; nothing relies on state that isn't described here.
 
-# 2. Apply each node's config (nodes boot in maintenance mode, hence --insecure),
-#    then bootstrap etcd on the first control plane
-talosctl apply-config --insecure --nodes <ip> \
-  --file talos/controlplane.yaml --config-patch @talos/talos-cp-01.yaml
-#    …repeat for every node, using talos/worker.yaml for talos-wk-0X
-talosctl bootstrap --nodes <ip-cp-01> --talosconfig talos/talosconfig.yaml
+### Versions this repository targets
 
-# 3. Bootstrap the only two components that can't deploy themselves
-helmfile -f k8s/helmfile.yaml apply
+| Component       | Version                                         | Where it is pinned                                      |
+| --------------- | ----------------------------------------------- | ------------------------------------------------------- |
+| Talos Linux     | **v1.14.6**                                     | installer image in `talos/cp-patch.yaml` / `wk-patch.yaml` |
+| Kubernetes      | **v1.36.6**                                     | `--kubernetes-version` flag of `talosctl gen config`    |
+| Cilium          | **1.20.5**                                      | `k8s/apps/cilium/application.yaml` + `k8s/helmfile.yaml` |
+| ArgoCD          | **v3.6.2** (chart 10.18.2)                      | `k8s/apps/argocd/application.yaml` + `k8s/helmfile.yaml` |
+| Gateway API     | **v1.7.0** (experimental channel)               | Talos bootstrap manifest in `talos/cp-patch.yaml`       |
 
-# 4. Hand everything else to ArgoCD
-kubectl apply -f k8s/root-app.yaml
+Kubernetes is held at 1.36 on purpose: no released Cilium version is tested against 1.37 yet.
 
-# 5. Once ArgoCD has deployed Vault (wave -2):
-#    initialize and unseal it, enable Kubernetes auth, create the eso-role
+**Tools on the admin machine:** `talosctl` (same minor version as the nodes), `kubectl`, `helm`, `helmfile`.
+
+### 1. Network (UniFi)
+
+1. **Deployment VLAN** `192.168.20.0/24`, with DHCP reservations matching the VM MAC addresses:
+
+   | Node          | IP              |
+   | ------------- | --------------- |
+   | `talos-cp-01` | `192.168.20.11` |
+   | `talos-cp-02` | `192.168.20.12` |
+   | `talos-cp-03` | `192.168.20.13` |
+   | `talos-wk-01` | `192.168.20.21` |
+   | `talos-wk-02` | `192.168.20.22` |
+   | `talos-wk-03` | `192.168.20.23` |
+
+   Keep `192.168.20.10` (Kubernetes API VIP), `192.168.20.20` (external gateway) and `192.168.20.99` (internal gateway) **outside** the DHCP pool.
+
+2. **Zone firewall policies** — the admin machine's zone needs TCP **50000** (Talos API) and **6443** (Kubernetes API) towards the Deployment zone. Never allow the reverse direction.
+3. **BGP** — apply [`frr.conf`](frr.conf) on the UDM Pro, replacing the `#${SECRET}#` placeholder with a random MD5 password. The same password goes into Vault at `secret/cilium-bgp` (step 6).
+4. **Split-horizon DNS** — on the UDM, a local DNS record `*.xako.net → 192.168.20.99` (internal gateway). Public records are managed by `cloudflare-ddns` once the cluster runs.
+
+### 2. Proxmox VMs
+
+Download the Talos ISO built from this repository's [Image Factory](https://factory.talos.dev) schematic — nocloud platform, SecureBoot, extensions `iscsi-tools` (required by Longhorn), `qemu-guest-agent` and `util-linux-tools`:
+
+```text
+https://factory.talos.dev/image/861a91152157e97c900df9ca48fe4a26f19f19795e081386751bb7994c16800f/v1.14.6/nocloud-amd64-secureboot.iso
 ```
 
-From step 4 onward, ArgoCD converges the cluster on whatever `main` describes. As soon as Vault is initialized in step 5, every `ExternalSecret` reconciles on its own.
+Create six VMs, one control plane and one worker per Proxmox host:
+
+- **Name** = the Talos hostname (`talos-cp-01`, `talos-wk-01`, …) — Talos reads it from cloud-init, nothing else sets it.
+- **Firmware**: OVMF (UEFI) with an EFI disk, **Secure Boot keys not pre-enrolled** (setup mode): at first boot, choose *Enroll Secure Boot keys* in the Talos boot menu.
+- **Machine** `q35`, **disk** on a SCSI controller (it must appear as `/dev/sda`), **QEMU guest agent** enabled.
+- **Cloud-Init drive** added, with `ipconfig0` set to `ip=dhcp` — this is what hands the VM name to Talos as its hostname.
+- Network on the Deployment VLAN, with the MAC address used in the DHCP reservation.
+
+Boot every VM from the ISO: they come up in **maintenance mode** with their reserved IP.
+
+### 3. Talos
+
+```bash
+cd talos/
+
+# Cluster PKI: generate it once and back it up OUTSIDE the cluster (password manager, encrypted USB).
+# It is the only file that cannot be regenerated.
+talosctl gen secrets -o secrets.yaml
+
+# Full machine configs = Talos defaults + the versioned patches + the PKI (all three outputs are gitignored)
+talosctl gen config xako-cluster https://192.168.20.10:6443 \
+  --kubernetes-version 1.36.6 \
+  --with-secrets secrets.yaml \
+  --config-patch-control-plane @cp-patch.yaml \
+  --config-patch-worker @wk-patch.yaml \
+  --output-dir . --force
+
+# Nodes in maintenance mode accept an unauthenticated first config (hence --insecure), one node per call
+for ip in 192.168.20.11 192.168.20.12 192.168.20.13; do
+  talosctl apply-config --insecure -n "$ip" --file controlplane.yaml
+done
+for ip in 192.168.20.21 192.168.20.22 192.168.20.23; do
+  talosctl apply-config --insecure -n "$ip" --file worker.yaml
+done
+```
+
+Each node installs Talos to `/dev/sda` and reboots. Then:
+
+```bash
+export TALOSCONFIG=$PWD/talosconfig
+talosctl config endpoint 192.168.20.11 192.168.20.12 192.168.20.13
+
+talosctl bootstrap -n 192.168.20.11             # creates etcd — run it once, on a single node
+talosctl kubeconfig -n 192.168.20.11            # merges the cluster into ~/.kube/config
+talosctl -n 192.168.20.11 etcd members          # expect 3 members after a few minutes
+```
+
+Nodes stay `NotReady` until a CNI is installed — that is expected. The Gateway API CRDs, `metrics-server`, `kubelet-serving-cert-approver` and the Cloudflare Origin CA CRDs are installed by Talos itself (they are bootstrap manifests in `cp-patch.yaml`), so they already exist when Cilium starts.
+
+### 4. Bootstrap Cilium and ArgoCD
+
+```bash
+cd ..
+helmfile -f k8s/helmfile.yaml apply     # waits until Cilium is up; nodes turn Ready
+```
+
+This is the only time `helmfile` runs. The releases are pinned to the same versions as their `Application`, which ArgoCD adopts in the next step.
+
+### 5. Hand everything to ArgoCD
+
+```bash
+kubectl apply -f k8s/root-app.yaml
+```
+
+The app-of-apps discovers every `k8s/apps/*/application.yaml` and installs them wave by wave. Vault comes up at wave `-2`, but **sealed**: everything that consumes a secret stays `Degraded` until step 6 is done. That is expected.
+
+ArgoCD UI, while waiting:
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo
+kubectl -n argocd port-forward svc/argocd-server 8080:443      # https://localhost:8080, user "admin"
+```
+
+### 6. Vault
+
+**Initialize, unseal and join the three Raft members.** Store the unseal keys and the root token outside the cluster.
+
+```bash
+kubectl -n vault exec -ti hashicorp-vault-0 -- vault operator init -key-shares=5 -key-threshold=3
+kubectl -n vault exec -ti hashicorp-vault-0 -- vault operator unseal      # repeat with 3 different keys
+
+for i in 1 2; do
+  kubectl -n vault exec -ti hashicorp-vault-$i -- vault operator raft join http://hashicorp-vault-0.hashicorp-vault-internal:8200
+  kubectl -n vault exec -ti hashicorp-vault-$i -- vault operator unseal   # repeat with 3 keys
+done
+```
+
+**Configure the secrets engine and the External Secrets role** (from a shell in `hashicorp-vault-0`, after `vault login <root-token>`):
+
+```bash
+vault secrets enable -path=secret kv-v2
+vault auth enable kubernetes
+vault write auth/kubernetes/config kubernetes_host=https://kubernetes.default.svc:443
+
+vault policy write eso-policy - <<'EOF'
+path "secret/data/*"     { capabilities = ["read"] }
+path "secret/metadata/*" { capabilities = ["read", "list"] }
+EOF
+
+vault write auth/kubernetes/role/eso-role \
+  bound_service_account_names=external-secrets \
+  bound_service_account_namespaces=external-secrets \
+  policies=eso-policy ttl=1h
+```
+
+**Write the secrets.** Every `ExternalSecret` reads one Vault path and expects exactly these keys:
+
+| Vault path (`vault kv put secret/<path> …`) | Keys                                                                                                                         | Consumed by                                          |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `cloudflare`                                | `cfapi-ca-token` (Origin CA), `cfapi-dns-zone-token` (DNS edit, Let's Encrypt DNS-01), `cfapi-ddns-token` (DNS edit)          | cert-manager issuers, `cloudflare-ddns`              |
+| `cilium-bgp`                                | `password` — the MD5 password configured in `frr.conf`                                                                       | Cilium BGP peering                                   |
+| `argocd`                                    | `username`, `password` — a GitHub read-only token for this repository                                                         | ArgoCD repository credentials                        |
+| `valkey`                                    | `default` — password of the Valkey `default` ACL user                                                                        | Valkey                                               |
+| `immich`                                    | `REDIS_PASSWORD` — same value as `valkey/default`                                                                            | Immich                                               |
+| `cloudnative-pg/immich-user`                | `username` (`immich-user`), `password`                                                                                       | Immich PostgreSQL role                               |
+| `mariadb`                                   | `root-password`, `seafile-password`                                                                                          | MariaDB                                              |
+| `seafile`                                   | `INIT_SEAFILE_ADMIN_PASSWORD`, `INIT_SEAFILE_MYSQL_ROOT_PASSWORD` (= `mariadb/root-password`), `SEAFILE_MYSQL_DB_PASSWORD` (= `mariadb/seafile-password`), `REDIS_PASSWORD` (= `valkey/default`), `JWT_PRIVATE_KEY` (random 40+ characters) | Seafile |
+| `seafile-client`                            | `SEAF_USERNAME`, `SEAF_PASSWORD` — a Seafile account owning the music library                                                 | Navidrome sync sidecar                               |
+
+ESO polls every 15 seconds: within a minute, every `ExternalSecret` turns `Ready` and the remaining applications converge. The cluster is complete when ArgoCD shows every application `Synced` and `Healthy`:
+
+```bash
+kubectl -n argocd get applications
+kubectl get ciliumbgpnodeconfigs -o wide      # one established session per worker
+kubectl get gateway -A                        # both gateways Programmed, on .20 and .99
+```
+
+### 7. Last manual step: the Navidrome library
+
+Navidrome syncs one Seafile library, referenced by ID. After logging into Seafile with the `seafile-client` account, create the music library and put its ID in `SEAF_LIBRARY` in `k8s/apps/navidrome/manifests/navidrome.yaml`, then push.
+
+### Day-2 operations
+
+**Changing the Talos configuration** — edit `cp-patch.yaml` or `wk-patch.yaml`, regenerate with the `gen config` command of step 3 (same `secrets.yaml`, same `--kubernetes-version`), preview, then apply one node at a time:
+
+```bash
+talosctl -n 192.168.20.11 apply-config --dry-run --file talos/controlplane.yaml
+talosctl -n 192.168.20.11 apply-config --file talos/controlplane.yaml
+```
+
+Never regenerate without `--with-secrets`: a new PKI would break trust between the nodes.
+
+**Upgrading Talos** — bump the installer tag in both patches, then upgrade the control planes one by one (`talosctl -n <ip> upgrade --image <installer-image>`), checking `etcd members` between each. Workers need more care, because every worker holds single-replica Longhorn volumes and a sealed-after-reboot Vault pod:
+
+1. Relax Longhorn's drain policy for the duration of the operation:
+   `kubectl -n longhorn-system patch settings.longhorn.io node-drain-policy --type merge -p '{"value":"allow-if-replica-is-stopped"}'`
+2. Per worker: `talosctl upgrade --image <installer-image> --no-reboot` (stages the new version), then `kubectl drain <node> --ignore-daemonsets --delete-emptydir-data`, then `talosctl -n <ip> reboot`, then `kubectl uncordon <node>`. `talosctl upgrade` cannot drain a worker by itself, since only control planes expose a kubeconfig.
+3. Unseal the Vault pod of that worker, and wait for every Longhorn volume to be `healthy` again before the next worker. Move the CloudNativePG primary away first if it runs there: `kubectl cnpg promote immich-database <instance> -n immich`.
+4. Restore the policy: `block-if-contains-last-replica`.
+
+**Upgrading Kubernetes** — `talosctl -n 192.168.20.11 upgrade-k8s --to <version> --dry-run`, then without `--dry-run`. One minor version at a time, and only to a version the current Cilium release is tested against. Afterwards, update `--kubernetes-version` in the `gen config` command.
+
+**Upgrading any workload** — change its `targetRevision` (or image tag) in `k8s/apps/<service>/`, commit, push. ArgoCD itself is upgraded the same way, through `k8s/apps/argocd/application.yaml`; keep `k8s/helmfile.yaml` in sync for the next bootstrap.
 
 ---
 
