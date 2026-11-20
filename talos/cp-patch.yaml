@@ -49,12 +49,12 @@ enabled: false
 apiVersion: v1alpha1
 kind: KubeExternalManifestConfig
 name: kubelet-serving-cert-approver
-url: https://raw.githubusercontent.com/alex1989hu/kubelet-serving-cert-approver/main/deploy/standalone-install.yaml
+url: https://raw.githubusercontent.com/alex1989hu/kubelet-serving-cert-approver/v0.12.1/deploy/standalone-install.yaml
 ---
 apiVersion: v1alpha1
 kind: KubeExternalManifestConfig
 name: metrics-server
-url: https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+url: https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.9.1/components.yaml
 ---
 apiVersion: v1alpha1
 kind: KubeExternalManifestConfig
@@ -64,9 +64,9 @@ url: https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.7.0/exp
 apiVersion: v1alpha1
 kind: KubeExternalManifestConfig
 name: origin-ca-issuer-clusteroriginissuers-crd
-url: https://raw.githubusercontent.com/cloudflare/origin-ca-issuer/v0.14.4/deploy/crds/cert-manager.k8s.cloudflare.com_clusteroriginissuers.yaml
+url: https://raw.githubusercontent.com/cloudflare/origin-ca-issuer/v0.15.1/deploy/crds/cert-manager.k8s.cloudflare.com_clusteroriginissuers.yaml
 ---
 apiVersion: v1alpha1
 kind: KubeExternalManifestConfig
 name: origin-ca-issuer-originissuers-crd
-url: https://raw.githubusercontent.com/cloudflare/origin-ca-issuer/v0.14.4/deploy/crds/cert-manager.k8s.cloudflare.com_originissuers.yaml
+url: https://raw.githubusercontent.com/cloudflare/origin-ca-issuer/v0.15.1/deploy/crds/cert-manager.k8s.cloudflare.com_originissuers.yaml

@@ -287,8 +287,8 @@ The BGP session's MD5 key follows the same path on the cluster side. On the rout
 | **Seafile**                 | File synchronization                                                            | 100 Gi on Longhorn, backed by MariaDB (three databases) with Valkey as cache                                                                                                                                  |
 | **Navidrome**               | Music streaming                                                                 | A `seafile-client` **sidecar** syncs a Seafile library into the music PVC — upload a track from any device through Seafile, and Navidrome picks it up automatically                                           |
 | **VLSM Calculator**         | Custom application ([repo](https://github.com/ilyas-bouktrane/vlsm-calculator)) | 3 replicas, `topologySpreadConstraints` across hosts, PDB `minAvailable: 1`, non-root with all capabilities dropped and `seccompProfile: RuntimeDefault`, liveness and readiness probes                       |
-| **Valkey**                  | Cache layer                                                                     | 2 replicas, PDB, ACL-based authentication                                                                                                                                                                     |
-| **CloudNativePG / MariaDB** | Stateful data                                                                   | CloudNativePG runs a 3-instance PostgreSQL cluster spread across workers; the MariaDB operator runs 3 replicas with pod anti-affinity and a PDB, while the database instance itself is single-replica for now |
+| **Valkey**                  | Cache layer                                                                     | 3 pods (1 primary + 2 replicas), PDB, ACL-based authentication                                                                                                                                                |
+| **CloudNativePG / MariaDB** | Stateful data                                                                   | CloudNativePG runs a 3-instance PostgreSQL cluster spread across workers; the MariaDB operator runs 3 replicas with pod anti-affinity and a PDB, while the database instance itself is single-replica for now, pinned to the 11.8 LTS line |
 | **VPA + Descheduler**       | Scheduling                                                                      | Automatic resource right-sizing, and hourly pod rebalancing across workers                                                                                                                                    |
 
 ![Immich pods — the three PostgreSQL instances each scheduled on a different worker node](screenshots/immich-deployment.png)
@@ -337,7 +337,7 @@ The BGP session's MD5 key follows the same path on the cluster side. On the rout
 Honest infrastructure has a debt list. This one is mine:
 
 - [x] **Pin image versions** — every Helm chart and third-party workload image now runs an explicit version instead of `:latest`
-- [ ] **Pin the Talos bootstrap manifests** — `kubelet-serving-cert-approver` (`main`) and `metrics-server` (`latest`) are still fetched from floating URLs in the Talos patches
+- [x] **Pin the Talos bootstrap manifests** — `kubelet-serving-cert-approver`, `metrics-server`, Gateway API and the Origin CA CRDs are fetched from versioned URLs in the Talos patches
 - [ ] **Version the VLSM Calculator image** — tag each build with its commit SHA so updates ship through Git like everything else
 - [ ] **MariaDB Galera** — the operator runs HA, the database instance does not yet
 - [ ] **Tighten Seafile grants** — currently broader than the three databases it actually needs

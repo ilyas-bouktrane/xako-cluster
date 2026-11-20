@@ -13,20 +13,21 @@ spec:
     path: k8s/apps/cert-manager/manifests
   - chart: cert-manager
     repoURL: quay.io/jetstack/charts
-    targetRevision: v1.20.2
+    targetRevision: v1.21.3
     helm:
       releaseName: cert-manager
       values: |
         crds:
           enabled: true
         config:
-          enableGatewayAPI: true
+          gatewayAPI:
+            enabled: true
         extraArgs:
           - --dns01-recursive-nameservers=1.1.1.1:53,8.8.8.8:53
           - --dns01-recursive-nameservers-only
   - chart: origin-ca-issuer
     repoURL: ghcr.io/cloudflare/origin-ca-issuer-charts
-    targetRevision: 0.6.9
+    targetRevision: 0.6.11
     helm:
       releaseName: origin-ca-issuer
   destination:

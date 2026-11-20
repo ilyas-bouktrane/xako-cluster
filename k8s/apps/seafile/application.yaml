@@ -13,12 +13,13 @@ spec:
     path: k8s/apps/seafile/manifests
   - chart: ce
     repoURL: https://haiwen.github.io/seafile-helm-chart/repo
-    targetRevision: "13.0"
+    targetRevision: "13.0.4"
     helm:
       releaseName: seafile-app
       values: |
         seafile:
           configs:
+            image: seafileltd/seafile-mc:13.0.30 # chart default is the floating 13.0-latest tag
             seafileDataVolume:
               storageClassName: longhorn
               storage: 100Gi

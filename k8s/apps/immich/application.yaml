@@ -13,7 +13,7 @@ spec:
     path: k8s/apps/immich/manifests
   - chart: immich
     repoURL: ghcr.io/immich-app/immich-charts
-    targetRevision: 0.13.1
+    targetRevision: 0.13.4
     helm:
       releaseName: immich-app
       values: |
@@ -25,6 +25,8 @@ spec:
           main:
             containers:
               main:
+                image:
+                  tag: v3.4.2 # chart 0.13.4 defaults to v3.2.0
                 env:
                   REDIS_HOSTNAME: valkey.valkey.svc.cluster.local
                   REDIS_DBINDEX: "1"

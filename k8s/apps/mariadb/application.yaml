@@ -13,12 +13,12 @@ spec:
     path: k8s/apps/mariadb/manifests
   - chart: mariadb-operator-crds
     repoURL: https://helm.mariadb.com/mariadb-operator
-    targetRevision: 26.6.0
+    targetRevision: 26.10.2
     helm:
       releaseName: mariadb-operator-crds
   - chart: mariadb-operator
     repoURL: https://helm.mariadb.com/mariadb-operator
-    targetRevision: 26.6.0
+    targetRevision: 26.10.2
     helm:
       releaseName: mariadb-operator
       values: |
@@ -44,11 +44,14 @@ spec:
           maxUnavailable: 1
   - chart: mariadb-cluster
     repoURL: https://helm.mariadb.com/mariadb-operator
-    targetRevision: 26.6.0
+    targetRevision: 26.10.2
     helm:
       releaseName: mariadb-cluster
       values: |
         mariadb:
+          image: mariadb:11.8.9 # LTS line; pinned so operator upgrades never change the server version
+          updateStrategy:
+            autoUpdateDataPlane: true # keep agent/init containers in sync with operator upgrades (required by 26.10)
           replicas: 1
           galera:
             enabled: false

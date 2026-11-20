@@ -13,15 +13,16 @@ spec:
     path: k8s/apps/valkey/manifests
   - chart: valkey
     repoURL: https://valkey.io/valkey-helm/
-    targetRevision: 0.9.4
+    targetRevision: 1.0.0
     helm:
       releaseName: valkey
       values: |
         replica:
           enabled: true
-          replicas: 2
-          persistence:
-            size: 1Gi
+          replicas: 3 # since chart 1.0, counts the master too (same 3 pods as before)
+        persistence:
+          enabled: true
+          size: 1Gi
         podDisruptionBudget:
           enabled: true
           minAvailable: 1
